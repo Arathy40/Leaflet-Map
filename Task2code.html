@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task2 Arathy</title>
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <!-- Leaflet JavaScript -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- Leaflet Draw CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css"/>
+  <!-- Leaflet Draw JavaScript -->
+  <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+  <!-- Leaflet Search CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-search/dist/leaflet-search.min.css" />
+  <!-- Leaflet Search JavaScript -->
+  <script src="https://unpkg.com/leaflet-search/dist/leaflet-search.min.js"></script>
+  <style>
+    #map {
+      height: 500px;
+    }
+    .text-block {
+      margin-bottom: 5px;
+    }
+    .add-text-btn {
+      margin-top: 10px;
+    }
+    .search-container {
+      margin-top: 10px;
+    }
+    .search-input {
+      width: 200px;
+      margin-right: 10px;
+    }
+    .search-result {
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Map Container -->
+<div id="map"></div>
+
+<script>
+
+  // Initialize Leaflet map
+  var map = L.map('map').setView([51.505, -0.09], 10);
+
+  // Add OpenStreetMap tile layer
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+
+  // Initialize Leaflet Draw
+  var drawnItems = new L.FeatureGroup();
+  map.addLayer(drawnItems);
+  var drawControl = new L.Control.Draw({
+    edit: {
+      featureGroup: drawnItems
+    },
+    draw: {
+      polygon: true,
+      polyline: true,
+      marker: true,
+      circlemarker: false, // Disable circle control
+      circle: false,       // Disable circle control
+      rectangle: false     // Disable rectangle control
+    }
+  });
+  map.addControl(drawControl);
+
+  // Initialize Leaflet Search Control
+  var searchControl = new L.Control.Search({
+    layer: drawnItems,
+    propertyName: 'text',
+    marker: false,
+    moveToLocation: function(latlng, title, map) {
+      map.setView(latlng, 10); // Set the zoom level here
+    }
+  });
+  map.addControl(searchControl);
+
+  // Data structure to store drawn features and their text blocks
+  var featureData = {};
+
+  // Event listener for draw created
+  map.on('draw:created', function(e) {
+    var layer = e.layer;
+    drawnItems.addLayer(layer);
+
+    // Add feature data
+    var featureId = L.stamp(layer);
+    featureData[featureId] = {
+      textBlocks: []
+    };
+
+    // Update popup content
+    function updatePopup(layer) {
+      var featureId = L.stamp(layer);
+      var textBlocks = featureData[featureId].textBlocks;
+      var popupContent = '<b>Text Blocks:</b><br>';
+      textBlocks.forEach(function(textBlock, index) {
+        popupContent += '<div class="text-block">' + textBlock + '<span class="edit-text" onclick="editText(' + featureId + ',' + index + ')"> ✎ </span><span class="delete-text" onclick="deleteText(' + featureId + ',' + index + ')"> ✘ </span></div>';
+      });
+      popupContent += '<button class="add-text-btn" onclick="addText(' + featureId + ')">+ Add Text</button>';
+      layer.bindPopup(popupContent);
+      layer.options.text = textBlocks.join(' '); // Set text for search
+    }
+
+    // Initial popup content
+    updatePopup(layer);
+    layer.openPopup();
+    layer.on('popupopen', function() {
+      layer.openPopup();
+    });
+
+    // Add button to open popup
+    layer.on('click', function(e) {
+      var featureId = L.stamp(layer);
+      layer.openPopup();
+      updatePopup(layer);
+    });
+
+    // Update feature data on edit
+    drawnItems.on('edit', function(e) {
+      var featureId = L.stamp(e.layer);
+      updatePopup(e.layer);
+    });
+  });
+
+  // Function to add text block
+  window.addText = function(featureId) {
+    var textInput = prompt("Enter text for this feature:");
+    if (textInput) {
+      featureData[featureId].textBlocks.push(textInput);
+      updatePopup(drawnItems.getLayer(featureId));
+    }
+  };
+
+  // Function to edit text block
+  window.editText = function(featureId, index) {
+    var newText = prompt("Edit text:", featureData[featureId].textBlocks[index]);
+    if (newText !== null) {
+      featureData[featureId].textBlocks[index] = newText;
+      updatePopup(drawnItems.getLayer(featureId));
+    }
+  };
+
+  // Function to delete text block
+  window.deleteText = function(featureId, index) {
+    featureData[featureId].textBlocks.splice(index, 1);
+    updatePopup(drawnItems.getLayer(featureId));
+  };
+
+</script>
+</body>
+</html>
